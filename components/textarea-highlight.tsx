@@ -4,6 +4,7 @@ import type React from 'react'
 import {useEffect, useState, useRef, useCallback} from 'react'
 import {Textarea} from './ui/textarea'
 import nlp from 'compromise'
+import DOMPurify from 'dompurify'
 
 const getRandomColor = (usedColors: Set<string>) => {
 	let color: string
@@ -26,7 +27,7 @@ const highlightRepeatedNouns = (
 	usedColors: Set<string>
 ) => {
 	const doc = nlp(text)
-	const nounSet = new Set(doc.nouns().out('array'))
+	const nounSet = new Set<string>(doc.nouns().out('array'))
 	const nouns = Array.from(nounSet)
 
 	// Count occurrences of each noun
@@ -80,9 +81,13 @@ const TextareaHighlight: React.FC = () => {
 
 	const handleTextChange = useCallback((newText: string) => {
 		setText(newText)
-		setHighlightedText(
-			highlightRepeatedNouns(newText, colorDict.current, usedColors.current)
+		const rawHtml = highlightRepeatedNouns(
+			newText,
+			colorDict.current,
+			usedColors.current
 		)
+		const sanitizedHtml = DOMPurify.sanitize(rawHtml)
+		setHighlightedText(sanitizedHtml)
 		localStorage.setItem('highlightedText', newText) // Save text to localStorage
 	}, [])
 
@@ -112,6 +117,7 @@ const TextareaHighlight: React.FC = () => {
 			/>
 			<div
 				className='bg-black text-white p-4 rounded-md whitespace-pre-wrap'
+				// biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>
 				dangerouslySetInnerHTML={{__html: highlightedText}}
 			/>
 		</div>
