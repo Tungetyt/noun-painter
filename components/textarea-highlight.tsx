@@ -16,8 +16,19 @@ import DOMPurify from 'dompurify'
 import {Checkbox} from './ui/checkbox'
 import {textVide} from 'text-vide'
 import {z} from 'zod'
+import {useForm} from 'react-hook-form'
+import {zodResolver} from '@hookform/resolvers/zod'
 import {Button} from './ui/button'
 import {Label} from './ui/label'
+import {
+	Form,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormControl,
+	FormMessage
+} from './ui/form'
+import {DevTool} from '@hookform/devtools'
 
 const getRandomColor = (usedColors: Set<string>) => {
 	let color: string
@@ -194,6 +205,15 @@ const useBionicReading = () => {
 	return [bionicReading, toggleBionicReading] as const
 }
 
+const formSchema = z.object({
+	text: z
+		.string()
+		.min(1)
+		.refine(value => /\S/.test(value), {
+			message: 'Text must contain non-whitespace characters'
+		})
+})
+
 const useSavedItems = (loadText: (text: string) => void) => {
 	const [savedItems, setSavedItems] = useState<
 		Array<{date: string; text: string}>
@@ -203,10 +223,11 @@ const useSavedItems = (loadText: (text: string) => void) => {
 		const savedItems = JSON.parse(localStorage.getItem('savedItems') || '[]')
 		const parsed = z
 			.array(
-				z.object({
-					text: z.string().min(1),
-					date: z.string().min(1)
-				})
+				formSchema.merge(
+					z.object({
+						date: z.string().min(1)
+					})
+				)
 			)
 			.parse(savedItems)
 		setSavedItems(parsed)
@@ -246,64 +267,82 @@ const TextareaHighlight: FC = () => {
 		handleTextChange(text)
 	}, [toggleBionicReading, handleTextChange, text])
 
+	const form = useForm({
+		resolver: zodResolver(formSchema),
+		defaultValues: {
+			text: ''
+		}
+	})
+
 	return (
-		<div className='flex mx-auto gap-4 flex-wrap'>
-			<div className='flex flex-col gap-4 max-w-[70ch]'>
-				<Textarea
-					placeholder='Provide the text here'
-					value={text}
-					onChange={({target}) => handleTextChange(target.value)}
-					ref={textareaRef}
-				/>
-				<div
-					className='bg-black text-white p-4 rounded-md whitespace-pre-wrap'
-					// biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>
-					dangerouslySetInnerHTML={{__html: highlightedText}}
-				/>
-			</div>
-			<div className='gap-4'>
-				<Label className='flex items-center gap-2'>
-					<Checkbox
-						checked={bionicReading}
-						onCheckedChange={handleCheckboxChange}
-					/>
-					<span>Bionic Reading</span>
-				</Label>
-				<Button
-					type='button'
-					onClick={() => saveCurrentText(text)}
-					className='mt-4'
+		<>
+			<Form {...form}>
+				<form
+					onSubmit={form.handleSubmit(({text}) => saveCurrentText(text))}
+					className='flex mx-auto gap-4 flex-wrap'
 				>
-					Save Text
-				</Button>
-				<ul className='mt-2'>
-					{savedItems.map(({text, date}) => (
-						<li key={date} className='flex items-center gap-2 my-2'>
-							<Button
-								type='button'
-								onClick={() => loadItem(text)}
-								className='underline'
-							>
-								{date}
-							</Button>
-						</li>
-					))}
-				</ul>
-			</div>
-		</div>
+					<div className='flex flex-col gap-4 max-w-[70ch]'>
+						<FormField
+							control={form.control}
+							name='text'
+							render={({field}) => (
+								<FormItem>
+									<FormLabel>Provide the text here</FormLabel>
+									<FormControl>
+										<Textarea
+											placeholder='Provide the text here'
+											{...field}
+											ref={textareaRef}
+											onChange={({target}) => {
+												handleTextChange(target.value)
+												field.onChange(target.value)
+											}}
+										/>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+						<div
+							className='bg-black text-white p-4 rounded-md whitespace-pre-wrap'
+							// biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>
+							dangerouslySetInnerHTML={{__html: highlightedText}}
+						/>
+					</div>
+					<div className='gap-4'>
+						<Label className='flex items-center gap-2'>
+							<Checkbox
+								checked={bionicReading}
+								onCheckedChange={handleCheckboxChange}
+							/>
+							<span>Bionic Reading</span>
+						</Label>
+						<Button
+							type='submit'
+							disabled={!form.formState.isValid}
+							className='mt-4'
+						>
+							Save Text
+						</Button>
+						<ul className='mt-2'>
+							{savedItems.map(({text, date}) => (
+								<li key={date} className='flex items-center gap-2 my-2'>
+									<Button
+										type='button'
+										onClick={() => loadItem(text)}
+										className='underline'
+									>
+										{date}
+									</Button>
+								</li>
+							))}
+						</ul>
+					</div>
+				</form>
+			</Form>
+			<DevTool control={form.control} />
+		</>
 	)
 }
 
 export default TextareaHighlight
-
-// toast with undo of deleting
-// deleting
-
-// Colors are remembered after deleting nouns
-// Form
-
-// Make coloring no random. First take pure red than pure blue than pure green, then binary searching by half between red and blue , then again by half effect
-
-// ChatGPT API request to clraify the text
-
-// Test with Playwrite
