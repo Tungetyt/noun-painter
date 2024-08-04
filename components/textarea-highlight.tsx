@@ -7,7 +7,8 @@ import {
 	useRef,
 	useCallback,
 	type Dispatch,
-	type SetStateAction
+	type SetStateAction,
+	type FC
 } from 'react'
 import {Textarea} from './ui/textarea'
 import nlp from 'compromise'
@@ -28,14 +29,17 @@ const escapeRegExp = (string: string) => {
 	return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // $& means the whole matched string
 }
 
-function getNouns(text: string) {
+const getNouns = (text: string) => {
 	const doc = nlp(text)
 	const nounSet = new Set<string>(doc.nouns().out('array'))
 	const nouns = Array.from(nounSet)
 	return nouns
 }
 
-function getHighlightedText(text: string, colorDict: {[key: string]: string}) {
+const getHighlightedText = (
+	text: string,
+	colorDict: Record<string, string>
+) => {
 	let highlightedText = text
 
 	for (const noun in colorDict) {
@@ -57,7 +61,7 @@ function getHighlightedText(text: string, colorDict: {[key: string]: string}) {
 	return highlightedText
 }
 
-function getRepeatedNouns(text: string) {
+const getRepeatedNouns = (text: string) => {
 	const nouns = getNouns(text)
 
 	// Count occurrences of each noun
@@ -97,7 +101,7 @@ const useHandleTextChange = (
 	setText: Dispatch<SetStateAction<string>>,
 	setHighlightedText: Dispatch<SetStateAction<string>>
 ) => {
-	const colorDict = useRef<{[key: string]: string}>({})
+	const colorDict = useRef<Record<string, string>>({})
 	const usedColors = useRef<Set<string>>(new Set())
 
 	const handleTextChange = useCallback(
@@ -150,7 +154,7 @@ const useSavedText = (handleTextChange: (newText: string) => void) => {
 	}, [handleTextChange])
 }
 
-const TextareaHighlight: React.FC = () => {
+const TextareaHighlight: FC = () => {
 	const {text, highlightedText, handleTextChange} = useTextChange()
 	const textareaRef = useTextareaRef(text)
 	useSavedText(handleTextChange)
@@ -160,7 +164,7 @@ const TextareaHighlight: React.FC = () => {
 			<Textarea
 				placeholder='Provide the text here'
 				value={text}
-				onChange={e => handleTextChange(e.target.value)}
+				onChange={({target}) => handleTextChange(target.value)}
 				ref={textareaRef}
 			/>
 			<div
