@@ -1,34 +1,32 @@
 'use client'
 
-import type React from 'react'
-import {
-	useEffect,
-	useState,
-	useRef,
-	useCallback,
-	type Dispatch,
-	type SetStateAction,
-	type FC
-} from 'react'
-import {Textarea} from './ui/textarea'
+import {zodResolver} from '@hookform/resolvers/zod'
 import nlp from 'compromise'
 import DOMPurify from 'dompurify'
-import {Checkbox} from './ui/checkbox'
+import {
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+	type Dispatch,
+	type FC,
+	type SetStateAction
+} from 'react'
+import {useForm, useWatch} from 'react-hook-form'
 import {textVide} from 'text-vide'
 import {z} from 'zod'
-import {useForm, useWatch} from 'react-hook-form'
-import {zodResolver} from '@hookform/resolvers/zod'
 import {Button} from './ui/button'
-import {Label} from './ui/label'
+import {Checkbox} from './ui/checkbox'
 import {
 	Form,
+	FormControl,
 	FormField,
 	FormItem,
 	FormLabel,
-	FormControl,
 	FormMessage
 } from './ui/form'
-import {DevTool} from '@hookform/devtools'
+import {Label} from './ui/label'
+import {Textarea} from './ui/textarea'
 
 const getRandomColor = (usedColors: Set<string>) => {
 	let color: string
