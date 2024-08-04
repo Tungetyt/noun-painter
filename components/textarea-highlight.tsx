@@ -339,7 +339,6 @@ const TextareaHighlight: FC = () => {
 					</div>
 				</form>
 			</Form>
-			<DevTool control={form.control} />
 		</>
 	)
 }
