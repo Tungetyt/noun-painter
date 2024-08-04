@@ -110,15 +110,18 @@ const highlightRepeatedNouns = (
 	bionicReading: boolean
 ) => {
 	const repeatedNouns = getRepeatedNouns(text)
+	const currentColors: {[key: string]: string} = {}
+
 	for (const noun of repeatedNouns) {
 		if (!colorDict[noun]) {
 			const color = getRandomColor(usedColors)
 			colorDict[noun] = color
 			usedColors.add(color)
 		}
+		currentColors[noun] = colorDict[noun]
 	}
 
-	return getHighlightedText(text, colorDict, bionicReading)
+	return getHighlightedText(text, currentColors, bionicReading)
 }
 
 const useHandleTextChange = (
@@ -294,7 +297,6 @@ const TextareaHighlight: FC = () => {
 											{...field}
 											ref={textareaRef}
 										/>
-										{/* Ensure this onChange doesn't conflict with RHF's internal logic */}
 									</FormControl>
 									<FormMessage />
 								</FormItem>
