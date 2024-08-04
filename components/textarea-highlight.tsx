@@ -1,11 +1,12 @@
 'use client'
 
-import React, {useEffect, useState, useRef, useCallback} from 'react'
+import type React from 'react'
+import {useEffect, useState, useRef, useCallback} from 'react'
 import {Textarea} from './ui/textarea'
 import nlp from 'compromise'
 
 const getRandomColor = (usedColors: Set<string>) => {
-	let color
+	let color: string
 	do {
 		const hue = Math.floor(Math.random() * 361)
 		const saturation = 100
@@ -30,28 +31,28 @@ const highlightRepeatedNouns = (
 
 	// Count occurrences of each noun
 	const nounCounts: {[key: string]: number} = {}
-	nouns.forEach(noun => {
+	for (const noun of nouns) {
 		const escapedNoun = escapeRegExp(noun)
 		const count = (text.match(new RegExp(`\\b${escapedNoun}\\b`, 'gi')) || [])
 			.length
 		if (count > 1) {
 			nounCounts[noun] = count
 		}
-	})
+	}
 
 	// Assign colors only to repeated nouns if not already assigned
 	const repeatedNouns = Object.keys(nounCounts)
-	repeatedNouns.forEach(noun => {
+	for (const noun of repeatedNouns) {
 		if (!colorDict[noun]) {
 			const color = getRandomColor(usedColors)
 			colorDict[noun] = color
 			usedColors.add(color)
 		}
-	})
+	}
 
 	let highlightedText = text
-	for (let noun in colorDict) {
-		if (colorDict.hasOwnProperty(noun)) {
+	for (const noun in colorDict) {
+		if (Object.prototype.hasOwnProperty.call(colorDict, noun)) {
 			const escapedNoun = escapeRegExp(noun)
 			// Use a regex that correctly identifies word boundaries including apostrophes
 			const regex = new RegExp(`\\b${escapedNoun}\\b`, 'gi')
