@@ -170,16 +170,37 @@ const useSavedText = (handleTextChange: (newText: string) => void) => {
 	}, [handleTextChange])
 }
 
-const TextareaHighlight: FC = () => {
+const useBionicReading = () => {
 	const [bionicReading, setBionicReading] = useState(false)
+
+	useEffect(() => {
+		const savedBionicReading = localStorage.getItem('bionicReading')
+		if (savedBionicReading) {
+			setBionicReading(savedBionicReading === 'true')
+		}
+	}, [])
+
+	const toggleBionicReading = useCallback(() => {
+		setBionicReading(prev => {
+			const newValue = !prev
+			localStorage.setItem('bionicReading', newValue.toString())
+			return newValue
+		})
+	}, [])
+
+	return [bionicReading, toggleBionicReading] as const
+}
+
+const TextareaHighlight: FC = () => {
+	const [bionicReading, toggleBionicReading] = useBionicReading()
 	const {text, highlightedText, handleTextChange} = useTextChange(bionicReading)
 	const textareaRef = useTextareaRef(text)
 	useSavedText(handleTextChange)
 
 	const handleCheckboxChange = useCallback(() => {
-		setBionicReading(prev => !prev)
+		toggleBionicReading()
 		handleTextChange(text)
-	}, [handleTextChange, text])
+	}, [toggleBionicReading, handleTextChange, text])
 
 	return (
 		<div className='flex mx-auto gap-4 flex-wrap'>

@@ -39,10 +39,6 @@ export function ModeToggle() {
 	)
 }
 
-// match
-// nouns
-// bionic reading
 // only one colloring too
-// remember the choices with LS
 
 //  history - save button and the list
