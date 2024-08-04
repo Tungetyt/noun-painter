@@ -13,6 +13,8 @@ import {
 import {Textarea} from './ui/textarea'
 import nlp from 'compromise'
 import DOMPurify from 'dompurify'
+import {Checkbox} from './ui/checkbox'
+import {textVide} from 'text-vide'
 
 const getRandomColor = (usedColors: Set<string>) => {
 	let color: string
@@ -38,7 +40,8 @@ const getNouns = (text: string) => {
 
 const getHighlightedText = (
 	text: string,
-	colorDict: Record<string, string>
+	colorDict: Record<string, string>,
+	bionicReading: boolean
 ) => {
 	let highlightedText = text
 
@@ -58,6 +61,12 @@ const getHighlightedText = (
 	highlightedText = highlightedText
 		.replace(/\n/g, '<br/>')
 		.replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;')
+
+	// Apply Bionic Reading effect using text-vide
+	if (bionicReading) {
+		highlightedText = textVide(highlightedText)
+	}
+
 	return highlightedText
 }
 
@@ -83,7 +92,8 @@ const getRepeatedNouns = (text: string) => {
 const highlightRepeatedNouns = (
 	text: string,
 	colorDict: {[key: string]: string},
-	usedColors: Set<string>
+	usedColors: Set<string>,
+	bionicReading: boolean
 ) => {
 	const repeatedNouns = getRepeatedNouns(text)
 	for (const noun of repeatedNouns) {
@@ -94,12 +104,13 @@ const highlightRepeatedNouns = (
 		}
 	}
 
-	return getHighlightedText(text, colorDict)
+	return getHighlightedText(text, colorDict, bionicReading)
 }
 
 const useHandleTextChange = (
 	setText: Dispatch<SetStateAction<string>>,
-	setHighlightedText: Dispatch<SetStateAction<string>>
+	setHighlightedText: Dispatch<SetStateAction<string>>,
+	bionicReading: boolean
 ) => {
 	const colorDict = useRef<Record<string, string>>({})
 	const usedColors = useRef<Set<string>>(new Set())
@@ -110,23 +121,28 @@ const useHandleTextChange = (
 			const rawHtml = highlightRepeatedNouns(
 				newText,
 				colorDict.current,
-				usedColors.current
+				usedColors.current,
+				bionicReading
 			)
 			const sanitizedHtml = DOMPurify.sanitize(rawHtml)
 			setHighlightedText(sanitizedHtml)
 			localStorage.setItem('highlightedText', newText) // Save text to localStorage
 		},
-		[setText, setHighlightedText]
+		[setText, setHighlightedText, bionicReading]
 	)
 
 	return handleTextChange
 }
 
-const useTextChange = () => {
+const useTextChange = (bionicReading: boolean) => {
 	const [text, setText] = useState('')
 	const [highlightedText, setHighlightedText] = useState('')
 
-	const handleTextChange = useHandleTextChange(setText, setHighlightedText)
+	const handleTextChange = useHandleTextChange(
+		setText,
+		setHighlightedText,
+		bionicReading
+	)
 
 	return {text, highlightedText, handleTextChange}
 }
@@ -155,23 +171,40 @@ const useSavedText = (handleTextChange: (newText: string) => void) => {
 }
 
 const TextareaHighlight: FC = () => {
-	const {text, highlightedText, handleTextChange} = useTextChange()
+	const [bionicReading, setBionicReading] = useState(false)
+	const {text, highlightedText, handleTextChange} = useTextChange(bionicReading)
 	const textareaRef = useTextareaRef(text)
 	useSavedText(handleTextChange)
 
+	const handleCheckboxChange = useCallback(() => {
+		setBionicReading(prev => !prev)
+		handleTextChange(text)
+	}, [handleTextChange, text])
+
 	return (
-		<div className='flex flex-col gap-4 w-[70ch] mx-auto'>
-			<Textarea
-				placeholder='Provide the text here'
-				value={text}
-				onChange={({target}) => handleTextChange(target.value)}
-				ref={textareaRef}
-			/>
-			<div
-				className='bg-black text-white p-4 rounded-md whitespace-pre-wrap'
-				// biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>
-				dangerouslySetInnerHTML={{__html: highlightedText}}
-			/>
+		<div className='flex mx-auto gap-4 flex-wrap'>
+			<div className='flex flex-col gap-4 max-w-[70ch]'>
+				<Textarea
+					placeholder='Provide the text here'
+					value={text}
+					onChange={({target}) => handleTextChange(target.value)}
+					ref={textareaRef}
+				/>
+				<div
+					className='bg-black text-white p-4 rounded-md whitespace-pre-wrap'
+					// biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>
+					dangerouslySetInnerHTML={{__html: highlightedText}}
+				/>
+			</div>
+			<div className='gap-4'>
+				<label className='flex items-center gap-2'>
+					<Checkbox
+						checked={bionicReading}
+						onCheckedChange={handleCheckboxChange}
+					/>
+					<span>Bionic Reading</span>
+				</label>
+			</div>
 		</div>
 	)
 }

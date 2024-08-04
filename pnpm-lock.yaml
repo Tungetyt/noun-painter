@@ -50,6 +50,9 @@ importers:
       tailwindcss-animate:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@3.4.7)
+      text-vide:
+        specifier: ^1.8.1
+        version: 1.8.1
     devDependencies:
       '@biomejs/biome':
         specifier: 1.8.3
@@ -1063,6 +1066,9 @@ packages:
     engines: {node: '>=14.0.0'}
     hasBin: true
 
+  text-vide@1.8.1:
+    resolution: {integrity: sha512-oAekt3GUVVvNg0BtzsXQ3TYhV1tXAdO5YDFWxquBpjOuuxxXZhGPR1nz8hxjYhx9w+OJmMIdE59ArSdTJe86JQ==}
+
   thenify-all@1.6.0:
     resolution: {integrity: sha512-RNxQH/qI8/t3thXJDwcstUO4zeqo64+Uy/+sNVRBx4Xn2OX+OZ9oP+iJnNFqplFra2ZUVeKCSa2oVWi3T4uVmA==}
     engines: {node: '>=0.8'}
@@ -2013,6 +2019,8 @@ snapshots:
       sucrase: 3.35.0
     transitivePeerDependencies:
       - ts-node
+
+  text-vide@1.8.1: {}
 
   thenify-all@1.6.0:
     dependencies:
