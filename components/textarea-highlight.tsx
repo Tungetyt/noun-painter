@@ -33,23 +33,7 @@ const highlightRepeatedNouns = (
 	colorDict: {[key: string]: string},
 	usedColors: Set<string>
 ) => {
-	const doc = nlp(text)
-	const nounSet = new Set<string>(doc.nouns().out('array'))
-	const nouns = Array.from(nounSet)
-
-	// Count occurrences of each noun
-	const nounCounts: {[key: string]: number} = {}
-	for (const noun of nouns) {
-		const escapedNoun = escapeRegExp(noun)
-		const count = (text.match(new RegExp(`\\b${escapedNoun}\\b`, 'gi')) || [])
-			.length
-		if (count > 1) {
-			nounCounts[noun] = count
-		}
-	}
-
-	// Assign colors only to repeated nouns if not already assigned
-	const repeatedNouns = Object.keys(nounCounts)
+	const repeatedNouns = getRepeatedNouns(text)
 	for (const noun of repeatedNouns) {
 		if (!colorDict[noun]) {
 			const color = getRandomColor(usedColors)
@@ -139,3 +123,23 @@ const TextareaHighlight: React.FC = () => {
 }
 
 export default TextareaHighlight
+function getRepeatedNouns(text: string) {
+	const doc = nlp(text)
+	const nounSet = new Set<string>(doc.nouns().out('array'))
+	const nouns = Array.from(nounSet)
+
+	// Count occurrences of each noun
+	const nounCounts: {[key: string]: number} = {}
+	for (const noun of nouns) {
+		const escapedNoun = escapeRegExp(noun)
+		const count = (text.match(new RegExp(`\\b${escapedNoun}\\b`, 'gi')) || [])
+			.length
+		if (count > 1) {
+			nounCounts[noun] = count
+		}
+	}
+
+	// Assign colors only to repeated nouns if not already assigned
+	const repeatedNouns = Object.keys(nounCounts)
+	return repeatedNouns
+}
