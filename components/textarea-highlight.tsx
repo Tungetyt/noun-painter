@@ -1,7 +1,14 @@
 'use client'
 
 import type React from 'react'
-import {useEffect, useState, useRef, useCallback} from 'react'
+import {
+	useEffect,
+	useState,
+	useRef,
+	useCallback,
+	type Dispatch,
+	type SetStateAction
+} from 'react'
 import {Textarea} from './ui/textarea'
 import nlp from 'compromise'
 import DOMPurify from 'dompurify'
@@ -72,24 +79,37 @@ const highlightRepeatedNouns = (
 	return highlightedText
 }
 
+const useTextChange = (
+	setText: Dispatch<SetStateAction<string>>,
+	setHighlightedText: Dispatch<SetStateAction<string>>
+) => {
+	const colorDict = useRef<{[key: string]: string}>({})
+	const usedColors = useRef<Set<string>>(new Set())
+
+	const handleTextChange = useCallback(
+		(newText: string) => {
+			setText(newText)
+			const rawHtml = highlightRepeatedNouns(
+				newText,
+				colorDict.current,
+				usedColors.current
+			)
+			const sanitizedHtml = DOMPurify.sanitize(rawHtml)
+			setHighlightedText(sanitizedHtml)
+			localStorage.setItem('highlightedText', newText) // Save text to localStorage
+		},
+		[setText, setHighlightedText]
+	)
+
+	return handleTextChange
+}
+
 const TextareaHighlight: React.FC = () => {
 	const [text, setText] = useState('')
 	const [highlightedText, setHighlightedText] = useState('')
-	const colorDict = useRef<{[key: string]: string}>({})
-	const usedColors = useRef<Set<string>>(new Set())
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
-	const handleTextChange = useCallback((newText: string) => {
-		setText(newText)
-		const rawHtml = highlightRepeatedNouns(
-			newText,
-			colorDict.current,
-			usedColors.current
-		)
-		const sanitizedHtml = DOMPurify.sanitize(rawHtml)
-		setHighlightedText(sanitizedHtml)
-		localStorage.setItem('highlightedText', newText) // Save text to localStorage
-	}, [])
+	const handleTextChange = useTextChange(setText, setHighlightedText)
 
 	// Load text from localStorage on initial render and adjust height
 	useEffect(() => {
