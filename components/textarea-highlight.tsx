@@ -28,21 +28,16 @@ const escapeRegExp = (string: string) => {
 	return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // $& means the whole matched string
 }
 
-const highlightRepeatedNouns = (
-	text: string,
-	colorDict: {[key: string]: string},
-	usedColors: Set<string>
-) => {
-	const repeatedNouns = getRepeatedNouns(text)
-	for (const noun of repeatedNouns) {
-		if (!colorDict[noun]) {
-			const color = getRandomColor(usedColors)
-			colorDict[noun] = color
-			usedColors.add(color)
-		}
-	}
+function getNouns(text: string) {
+	const doc = nlp(text)
+	const nounSet = new Set<string>(doc.nouns().out('array'))
+	const nouns = Array.from(nounSet)
+	return nouns
+}
 
+function getHighlightedText(text: string, colorDict: {[key: string]: string}) {
 	let highlightedText = text
+
 	for (const noun in colorDict) {
 		if (Object.prototype.hasOwnProperty.call(colorDict, noun)) {
 			const escapedNoun = escapeRegExp(noun)
@@ -59,43 +54,81 @@ const highlightRepeatedNouns = (
 	highlightedText = highlightedText
 		.replace(/\n/g, '<br/>')
 		.replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;')
-
 	return highlightedText
+}
+
+function getRepeatedNouns(text: string) {
+	const nouns = getNouns(text)
+
+	// Count occurrences of each noun
+	const nounCounts: Record<string, number> = {}
+	for (const noun of nouns) {
+		const escapedNoun = escapeRegExp(noun)
+		const count = (text.match(new RegExp(`\\b${escapedNoun}\\b`, 'gi')) || [])
+			.length
+		if (count > 1) {
+			nounCounts[noun] = count
+		}
+	}
+
+	// Assign colors only to repeated nouns if not already assigned
+	const repeatedNouns = Object.keys(nounCounts)
+	return repeatedNouns
+}
+
+const highlightRepeatedNouns = (
+	text: string,
+	colorDict: {[key: string]: string},
+	usedColors: Set<string>
+) => {
+	const repeatedNouns = getRepeatedNouns(text)
+	for (const noun of repeatedNouns) {
+		if (!colorDict[noun]) {
+			const color = getRandomColor(usedColors)
+			colorDict[noun] = color
+			usedColors.add(color)
+		}
+	}
+
+	return getHighlightedText(text, colorDict)
+}
+
+const useHandleTextChange = (
+	setText: Dispatch<SetStateAction<string>>,
+	setHighlightedText: Dispatch<SetStateAction<string>>
+) => {
+	const colorDict = useRef<{[key: string]: string}>({})
+	const usedColors = useRef<Set<string>>(new Set())
+
+	const handleTextChange = useCallback(
+		(newText: string) => {
+			setText(newText)
+			const rawHtml = highlightRepeatedNouns(
+				newText,
+				colorDict.current,
+				usedColors.current
+			)
+			const sanitizedHtml = DOMPurify.sanitize(rawHtml)
+			setHighlightedText(sanitizedHtml)
+			localStorage.setItem('highlightedText', newText) // Save text to localStorage
+		},
+		[setText, setHighlightedText]
+	)
+
+	return handleTextChange
 }
 
 const useTextChange = () => {
 	const [text, setText] = useState('')
 	const [highlightedText, setHighlightedText] = useState('')
 
-	const colorDict = useRef<{[key: string]: string}>({})
-	const usedColors = useRef<Set<string>>(new Set())
-
-	const handleTextChange = useCallback((newText: string) => {
-		setText(newText)
-		const rawHtml = highlightRepeatedNouns(
-			newText,
-			colorDict.current,
-			usedColors.current
-		)
-		const sanitizedHtml = DOMPurify.sanitize(rawHtml)
-		setHighlightedText(sanitizedHtml)
-		localStorage.setItem('highlightedText', newText) // Save text to localStorage
-	}, [])
+	const handleTextChange = useHandleTextChange(setText, setHighlightedText)
 
 	return {text, highlightedText, handleTextChange}
 }
 
-const TextareaHighlight: React.FC = () => {
+const useTextareaRef = (text: string) => {
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null)
-
-	const {text, highlightedText, handleTextChange} = useTextChange()
-
-	useEffect(() => {
-		const savedText = localStorage.getItem('highlightedText')
-		if (savedText) {
-			handleTextChange(savedText)
-		}
-	}, [handleTextChange])
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 	useEffect(() => {
@@ -104,6 +137,23 @@ const TextareaHighlight: React.FC = () => {
 			textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
 		}
 	}, [text])
+
+	return textareaRef
+}
+
+const useSavedText = (handleTextChange: (newText: string) => void) => {
+	useEffect(() => {
+		const savedText = localStorage.getItem('highlightedText')
+		if (savedText) {
+			handleTextChange(savedText)
+		}
+	}, [handleTextChange])
+}
+
+const TextareaHighlight: React.FC = () => {
+	const {text, highlightedText, handleTextChange} = useTextChange()
+	const textareaRef = useTextareaRef(text)
+	useSavedText(handleTextChange)
 
 	return (
 		<div className='flex flex-col gap-4 w-[70ch] mx-auto'>
@@ -123,23 +173,3 @@ const TextareaHighlight: React.FC = () => {
 }
 
 export default TextareaHighlight
-function getRepeatedNouns(text: string) {
-	const doc = nlp(text)
-	const nounSet = new Set<string>(doc.nouns().out('array'))
-	const nouns = Array.from(nounSet)
-
-	// Count occurrences of each noun
-	const nounCounts: {[key: string]: number} = {}
-	for (const noun of nouns) {
-		const escapedNoun = escapeRegExp(noun)
-		const count = (text.match(new RegExp(`\\b${escapedNoun}\\b`, 'gi')) || [])
-			.length
-		if (count > 1) {
-			nounCounts[noun] = count
-		}
-	}
-
-	// Assign colors only to repeated nouns if not already assigned
-	const repeatedNouns = Object.keys(nounCounts)
-	return repeatedNouns
-}
