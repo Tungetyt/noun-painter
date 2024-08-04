@@ -288,7 +288,6 @@ const TextareaHighlight: FC = () => {
 							name='text'
 							render={({field}) => (
 								<FormItem>
-									<FormLabel>Provide the text here</FormLabel>
 									<FormControl>
 										<Textarea
 											placeholder='Provide the text here'
