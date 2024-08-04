@@ -15,6 +15,9 @@ import nlp from 'compromise'
 import DOMPurify from 'dompurify'
 import {Checkbox} from './ui/checkbox'
 import {textVide} from 'text-vide'
+import {z} from 'zod'
+import {Button} from './ui/button'
+import {Label} from './ui/label'
 
 const getRandomColor = (usedColors: Set<string>) => {
 	let color: string
@@ -191,11 +194,52 @@ const useBionicReading = () => {
 	return [bionicReading, toggleBionicReading] as const
 }
 
+const useSavedItems = (loadText: (text: string) => void) => {
+	const [savedItems, setSavedItems] = useState<
+		Array<{date: string; text: string}>
+	>([])
+
+	useEffect(() => {
+		const savedItems = JSON.parse(localStorage.getItem('savedItems') || '[]')
+		const parsed = z
+			.array(
+				z.object({
+					text: z.string().min(1),
+					date: z.string().min(1)
+				})
+			)
+			.parse(savedItems)
+		setSavedItems(parsed)
+	}, [])
+
+	const saveCurrentText = useCallback(
+		(text: string) => {
+			const date = new Date().toLocaleString()
+			const newItem = {date, text}
+			const updatedItems = [...savedItems, newItem]
+			localStorage.setItem('savedItems', JSON.stringify(updatedItems))
+			setSavedItems(updatedItems)
+		},
+		[savedItems]
+	)
+
+	const loadItem = useCallback(
+		(text: string) => {
+			loadText(text)
+		},
+		[loadText]
+	)
+
+	return {savedItems, saveCurrentText, loadItem}
+}
+
 const TextareaHighlight: FC = () => {
 	const [bionicReading, toggleBionicReading] = useBionicReading()
 	const {text, highlightedText, handleTextChange} = useTextChange(bionicReading)
 	const textareaRef = useTextareaRef(text)
 	useSavedText(handleTextChange)
+	const {savedItems, saveCurrentText, loadItem} =
+		useSavedItems(handleTextChange)
 
 	const handleCheckboxChange = useCallback(() => {
 		toggleBionicReading()
@@ -218,16 +262,48 @@ const TextareaHighlight: FC = () => {
 				/>
 			</div>
 			<div className='gap-4'>
-				<label className='flex items-center gap-2'>
+				<Label className='flex items-center gap-2'>
 					<Checkbox
 						checked={bionicReading}
 						onCheckedChange={handleCheckboxChange}
 					/>
 					<span>Bionic Reading</span>
-				</label>
+				</Label>
+				<Button
+					type='button'
+					onClick={() => saveCurrentText(text)}
+					className='mt-4'
+				>
+					Save Text
+				</Button>
+				<ul className='mt-2'>
+					{savedItems.map(({text, date}) => (
+						<li key={date} className='flex items-center gap-2 my-2'>
+							<Button
+								type='button'
+								onClick={() => loadItem(text)}
+								className='underline'
+							>
+								{date}
+							</Button>
+						</li>
+					))}
+				</ul>
 			</div>
 		</div>
 	)
 }
 
 export default TextareaHighlight
+
+// toast with undo of deleting
+// deleting
+
+// Colors are remembered after deleting nouns
+// Form
+
+// Make coloring no random. First take pure red than pure blue than pure green, then binary searching by half between red and blue , then again by half effect
+
+// ChatGPT API request to clraify the text
+
+// Test with Playwrite
