@@ -38,7 +38,3 @@ export function ModeToggle() {
 		</DropdownMenu>
 	)
 }
-
-// only one colloring too
-
-//  history - save button and the list

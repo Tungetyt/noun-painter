@@ -16,7 +16,7 @@ import DOMPurify from 'dompurify'
 import {Checkbox} from './ui/checkbox'
 import {textVide} from 'text-vide'
 import {z} from 'zod'
-import {useForm} from 'react-hook-form'
+import {useForm, useWatch} from 'react-hook-form'
 import {zodResolver} from '@hookform/resolvers/zod'
 import {Button} from './ui/button'
 import {Label} from './ui/label'
@@ -122,7 +122,6 @@ const highlightRepeatedNouns = (
 }
 
 const useHandleTextChange = (
-	setText: Dispatch<SetStateAction<string>>,
 	setHighlightedText: Dispatch<SetStateAction<string>>,
 	bionicReading: boolean
 ) => {
@@ -131,7 +130,6 @@ const useHandleTextChange = (
 
 	const handleTextChange = useCallback(
 		(newText: string) => {
-			setText(newText)
 			const rawHtml = highlightRepeatedNouns(
 				newText,
 				colorDict.current,
@@ -142,23 +140,10 @@ const useHandleTextChange = (
 			setHighlightedText(sanitizedHtml)
 			localStorage.setItem('highlightedText', newText) // Save text to localStorage
 		},
-		[setText, setHighlightedText, bionicReading]
+		[setHighlightedText, bionicReading]
 	)
 
 	return handleTextChange
-}
-
-const useTextChange = (bionicReading: boolean) => {
-	const [text, setText] = useState('')
-	const [highlightedText, setHighlightedText] = useState('')
-
-	const handleTextChange = useHandleTextChange(
-		setText,
-		setHighlightedText,
-		bionicReading
-	)
-
-	return {text, highlightedText, handleTextChange}
 }
 
 const useTextareaRef = (text: string) => {
@@ -256,16 +241,7 @@ const useSavedItems = (loadText: (text: string) => void) => {
 
 const TextareaHighlight: FC = () => {
 	const [bionicReading, toggleBionicReading] = useBionicReading()
-	const {text, highlightedText, handleTextChange} = useTextChange(bionicReading)
-	const textareaRef = useTextareaRef(text)
-	useSavedText(handleTextChange)
-	const {savedItems, saveCurrentText, loadItem} =
-		useSavedItems(handleTextChange)
-
-	const handleCheckboxChange = useCallback(() => {
-		toggleBionicReading()
-		handleTextChange(text)
-	}, [toggleBionicReading, handleTextChange, text])
+	const [highlightedText, setHighlightedText] = useState('')
 
 	const form = useForm({
 		resolver: zodResolver(formSchema),
@@ -273,6 +249,30 @@ const TextareaHighlight: FC = () => {
 			text: ''
 		}
 	})
+
+	const watchedText = useWatch({
+		control: form.control,
+		name: 'text'
+	})
+
+	const handleTextChange = useHandleTextChange(
+		setHighlightedText,
+		bionicReading
+	)
+
+	const textareaRef = useTextareaRef(watchedText)
+	useSavedText(handleTextChange)
+	const {savedItems, saveCurrentText, loadItem} =
+		useSavedItems(handleTextChange)
+
+	const handleCheckboxChange = useCallback(() => {
+		toggleBionicReading()
+		handleTextChange(watchedText)
+	}, [toggleBionicReading, handleTextChange, watchedText])
+
+	useEffect(() => {
+		handleTextChange(watchedText)
+	}, [watchedText, handleTextChange])
 
 	return (
 		<>
@@ -293,11 +293,8 @@ const TextareaHighlight: FC = () => {
 											placeholder='Provide the text here'
 											{...field}
 											ref={textareaRef}
-											onChange={({target}) => {
-												handleTextChange(target.value)
-												field.onChange(target.value)
-											}}
 										/>
+										{/* Ensure this onChange doesn't conflict with RHF's internal logic */}
 									</FormControl>
 									<FormMessage />
 								</FormItem>
