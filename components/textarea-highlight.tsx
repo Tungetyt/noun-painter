@@ -1,6 +1,6 @@
 'use client'
 
-import React, {useEffect, useState, useRef} from 'react'
+import React, {useEffect, useState, useRef, useCallback} from 'react'
 import {Textarea} from './ui/textarea'
 import nlp from 'compromise'
 
@@ -25,10 +25,7 @@ const highlightRepeatedNouns = (
 	usedColors: Set<string>
 ) => {
 	const doc = nlp(text)
-	const nounSet = new Set([
-		...doc.match('#Noun').out('array'),
-		...doc.nouns().out('array')
-	])
+	const nounSet = new Set(doc.nouns().out('array'))
 	const nouns = Array.from(nounSet)
 
 	// Count occurrences of each noun
@@ -78,19 +75,39 @@ const TextareaHighlight: React.FC = () => {
 	const [highlightedText, setHighlightedText] = useState('')
 	const colorDict = useRef<{[key: string]: string}>({})
 	const usedColors = useRef<Set<string>>(new Set())
+	const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
-	useEffect(() => {
+	const handleTextChange = useCallback((newText: string) => {
+		setText(newText)
 		setHighlightedText(
-			highlightRepeatedNouns(text, colorDict.current, usedColors.current)
+			highlightRepeatedNouns(newText, colorDict.current, usedColors.current)
 		)
+		localStorage.setItem('highlightedText', newText) // Save text to localStorage
+	}, [])
+
+	// Load text from localStorage on initial render and adjust height
+	useEffect(() => {
+		const savedText = localStorage.getItem('highlightedText')
+		if (savedText) {
+			handleTextChange(savedText)
+		}
+	}, [handleTextChange])
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+	useEffect(() => {
+		if (textareaRef.current) {
+			textareaRef.current.style.height = 'auto'
+			textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
+		}
 	}, [text])
 
 	return (
-		<div className='flex flex-col gap-4'>
+		<div className='flex flex-col gap-4 w-[70ch] mx-auto'>
 			<Textarea
 				placeholder='Provide the text here'
 				value={text}
-				onChange={({target}) => setText(target.value)}
+				onChange={e => handleTextChange(e.target.value)}
+				ref={textareaRef}
 			/>
 			<div
 				className='bg-black text-white p-4 rounded-md whitespace-pre-wrap'
