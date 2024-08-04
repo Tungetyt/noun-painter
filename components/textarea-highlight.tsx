@@ -79,39 +79,33 @@ const highlightRepeatedNouns = (
 	return highlightedText
 }
 
-const useTextChange = (
-	setText: Dispatch<SetStateAction<string>>,
-	setHighlightedText: Dispatch<SetStateAction<string>>
-) => {
+const useTextChange = () => {
+	const [text, setText] = useState('')
+	const [highlightedText, setHighlightedText] = useState('')
+
 	const colorDict = useRef<{[key: string]: string}>({})
 	const usedColors = useRef<Set<string>>(new Set())
 
-	const handleTextChange = useCallback(
-		(newText: string) => {
-			setText(newText)
-			const rawHtml = highlightRepeatedNouns(
-				newText,
-				colorDict.current,
-				usedColors.current
-			)
-			const sanitizedHtml = DOMPurify.sanitize(rawHtml)
-			setHighlightedText(sanitizedHtml)
-			localStorage.setItem('highlightedText', newText) // Save text to localStorage
-		},
-		[setText, setHighlightedText]
-	)
+	const handleTextChange = useCallback((newText: string) => {
+		setText(newText)
+		const rawHtml = highlightRepeatedNouns(
+			newText,
+			colorDict.current,
+			usedColors.current
+		)
+		const sanitizedHtml = DOMPurify.sanitize(rawHtml)
+		setHighlightedText(sanitizedHtml)
+		localStorage.setItem('highlightedText', newText) // Save text to localStorage
+	}, [])
 
-	return handleTextChange
+	return {text, highlightedText, handleTextChange}
 }
 
 const TextareaHighlight: React.FC = () => {
-	const [text, setText] = useState('')
-	const [highlightedText, setHighlightedText] = useState('')
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
-	const handleTextChange = useTextChange(setText, setHighlightedText)
+	const {text, highlightedText, handleTextChange} = useTextChange()
 
-	// Load text from localStorage on initial render and adjust height
 	useEffect(() => {
 		const savedText = localStorage.getItem('highlightedText')
 		if (savedText) {
