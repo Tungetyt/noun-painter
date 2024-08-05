@@ -222,14 +222,18 @@ const useSavedItems = (loadText: (text: string) => void) => {
 	useEffect(() => {
 		const savedItems = JSON.parse(localStorage.getItem(LS.savedItems) || '[]')
 		const parsed = savedItemSchema.parse(savedItems)
-		setSavedItems(parsed)
+		setSavedItems(
+			parsed.sort(
+				(a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+			)
+		)
 	}, [])
 
 	const saveCurrentText = useCallback(
 		(text: string) => {
 			const date = new Date().toLocaleString()
 			const newItem = {date, text}
-			const updatedItems = [...savedItems, newItem]
+			const updatedItems = [{date, text}, ...savedItems]
 			setSavedItems(updatedItems)
 			setTimeout(() => {
 				const parsed = savedItemSchema.parse(
@@ -266,9 +270,14 @@ const useSavedItems = (loadText: (text: string) => void) => {
 					label: 'Undo',
 					onClick: () => {
 						if (deletedItem) {
-							const restoredItems = [...updatedItems, deletedItem]
+							const restoredItems = [deletedItem, ...updatedItems]
 							localStorage.setItem(LS.savedItems, JSON.stringify(restoredItems))
-							setSavedItems(restoredItems)
+							setSavedItems(
+								restoredItems.sort(
+									(a, b) =>
+										new Date(b.date).getTime() - new Date(a.date).getTime()
+								)
+							)
 						}
 					}
 				}
