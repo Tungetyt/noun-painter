@@ -3,6 +3,7 @@
 import {zodResolver} from '@hookform/resolvers/zod'
 import nlp from 'compromise'
 import DOMPurify from 'dompurify'
+import {Trash2} from 'lucide-react'
 import {
 	useCallback,
 	useEffect,
@@ -236,7 +237,16 @@ const useSavedItems = (loadText: (text: string) => void) => {
 		[loadText]
 	)
 
-	return {savedItems, saveCurrentText, loadItem}
+	const deleteItem = useCallback(
+		(date: string) => {
+			const updatedItems = savedItems.filter(item => item.date !== date)
+			localStorage.setItem('savedItems', JSON.stringify(updatedItems))
+			setSavedItems(updatedItems)
+		},
+		[savedItems]
+	)
+
+	return {savedItems, saveCurrentText, loadItem, deleteItem}
 }
 
 const TextareaHighlight: FC = () => {
@@ -262,7 +272,7 @@ const TextareaHighlight: FC = () => {
 
 	const textareaRef = useTextareaRef(watchedText)
 	useSavedText(handleTextChange)
-	const {savedItems, saveCurrentText, loadItem} =
+	const {savedItems, saveCurrentText, loadItem, deleteItem} =
 		useSavedItems(handleTextChange)
 
 	const handleCheckboxChange = useCallback(() => {
@@ -344,6 +354,14 @@ const TextareaHighlight: FC = () => {
 											</TooltipContent>
 										</Tooltip>
 									</TooltipProvider>
+									<Button
+										type='button'
+										onClick={() => deleteItem(date)}
+										variant='ghost'
+										className='p-0'
+									>
+										<Trash2 className='h-4 w-4' />
+									</Button>
 								</li>
 							))}
 						</ul>
