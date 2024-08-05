@@ -17,16 +17,15 @@ import {textVide} from 'text-vide'
 import {z} from 'zod'
 import {Button} from './ui/button'
 import {Checkbox} from './ui/checkbox'
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage
-} from './ui/form'
+import {Form, FormControl, FormField, FormItem, FormMessage} from './ui/form'
 import {Label} from './ui/label'
 import {Textarea} from './ui/textarea'
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger
+} from './ui/tooltip'
 
 const getRandomColor = (usedColors: Set<string>) => {
 	let color: string
@@ -293,6 +292,10 @@ const TextareaHighlight: FC = () => {
 											placeholder='Provide the text here'
 											{...field}
 											ref={textareaRef}
+											onChange={({target}) => {
+												handleTextChange(target.value)
+												field.onChange(target.value)
+											}}
 										/>
 									</FormControl>
 									<FormMessage />
@@ -323,13 +326,24 @@ const TextareaHighlight: FC = () => {
 						<ul className='mt-2'>
 							{savedItems.map(({text, date}) => (
 								<li key={date} className='flex items-center gap-2 my-2'>
-									<Button
-										type='button'
-										onClick={() => loadItem(text)}
-										className='underline'
-									>
-										{date}
-									</Button>
+									<TooltipProvider>
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<Button
+													type='button'
+													onClick={() => loadItem(text)}
+													className='underline'
+												>
+													{date}
+												</Button>
+											</TooltipTrigger>
+											<TooltipContent>
+												<span className='block max-w-xs text-left whitespace-pre-wrap'>
+													{text}
+												</span>
+											</TooltipContent>
+										</Tooltip>
+									</TooltipProvider>
 								</li>
 							))}
 						</ul>
