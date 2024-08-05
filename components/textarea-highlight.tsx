@@ -28,6 +28,7 @@ import {
 	TooltipProvider,
 	TooltipTrigger
 } from './ui/tooltip'
+import {Separator} from './ui/separator'
 
 const cooldownPeriod = 3000
 const LS = {
@@ -379,6 +380,7 @@ const TextareaHighlight: FC = () => {
 						>
 							{isCooldown ? 'Loading...' : 'Save Text'}
 						</Button>
+						<Separator className='mt-2' />
 						<ul className='mt-2'>
 							{savedItems.map(({text, date}) => (
 								<li key={date} className='flex items-center gap-2 my-2'>
