@@ -29,6 +29,28 @@ import {
 	TooltipTrigger
 } from './ui/tooltip'
 
+const cooldownPeriod = 3000
+const LS = {
+	savedItems: 'savedItems'
+} as const
+
+const formSchema = z.object({
+	text: z
+		.string()
+		.min(1)
+		.refine(value => /\S/.test(value), {
+			message: 'Text must contain non-whitespace characters'
+		})
+})
+
+const savedItemSchema = z.array(
+	formSchema.merge(
+		z.object({
+			date: z.string().min(1)
+		})
+	)
+)
+
 const getRandomColor = (usedColors: Set<string>) => {
 	let color: string
 	do {
@@ -192,31 +214,14 @@ const useBionicReading = () => {
 	return [bionicReading, toggleBionicReading] as const
 }
 
-const formSchema = z.object({
-	text: z
-		.string()
-		.min(1)
-		.refine(value => /\S/.test(value), {
-			message: 'Text must contain non-whitespace characters'
-		})
-})
-
 const useSavedItems = (loadText: (text: string) => void) => {
 	const [savedItems, setSavedItems] = useState<
 		Array<{date: string; text: string}>
 	>([])
 
 	useEffect(() => {
-		const savedItems = JSON.parse(localStorage.getItem('savedItems') || '[]')
-		const parsed = z
-			.array(
-				formSchema.merge(
-					z.object({
-						date: z.string().min(1)
-					})
-				)
-			)
-			.parse(savedItems)
+		const savedItems = JSON.parse(localStorage.getItem(LS.savedItems) || '[]')
+		const parsed = savedItemSchema.parse(savedItems)
 		setSavedItems(parsed)
 	}, [])
 
@@ -225,8 +230,19 @@ const useSavedItems = (loadText: (text: string) => void) => {
 			const date = new Date().toLocaleString()
 			const newItem = {date, text}
 			const updatedItems = [...savedItems, newItem]
-			localStorage.setItem('savedItems', JSON.stringify(updatedItems))
 			setSavedItems(updatedItems)
+			setTimeout(() => {
+				const parsed = savedItemSchema.parse(
+					JSON.parse(localStorage.getItem(LS.savedItems) || '[]')
+				)
+
+				const existingItem = parsed.find(
+					(item: {date: string}) => item.date === date
+				)
+				if (!existingItem) {
+					localStorage.setItem(LS.savedItems, JSON.stringify(updatedItems))
+				}
+			}, cooldownPeriod)
 		},
 		[savedItems]
 	)
@@ -241,17 +257,17 @@ const useSavedItems = (loadText: (text: string) => void) => {
 	const deleteItem = useCallback(
 		(date: string) => {
 			const updatedItems = savedItems.filter(item => item.date !== date)
-			localStorage.setItem('savedItems', JSON.stringify(updatedItems))
+			const deletedItem = savedItems.find(item => item.date === date)
+			localStorage.setItem(LS.savedItems, JSON.stringify(updatedItems))
 			setSavedItems(updatedItems)
 
 			toast(`${date} deleted`, {
 				action: {
 					label: 'Undo',
 					onClick: () => {
-						const restoredItem = savedItems.find(item => item.date === date)
-						if (restoredItem) {
-							const restoredItems = [...updatedItems, restoredItem]
-							localStorage.setItem('savedItems', JSON.stringify(restoredItems))
+						if (deletedItem) {
+							const restoredItems = [...updatedItems, deletedItem]
+							localStorage.setItem(LS.savedItems, JSON.stringify(restoredItems))
 							setSavedItems(restoredItems)
 						}
 					}
@@ -267,6 +283,7 @@ const useSavedItems = (loadText: (text: string) => void) => {
 const TextareaHighlight: FC = () => {
 	const [bionicReading, toggleBionicReading] = useBionicReading()
 	const [highlightedText, setHighlightedText] = useState('')
+	const [isCooldown, setIsCooldown] = useState(false)
 
 	const form = useForm({
 		resolver: zodResolver(formSchema),
@@ -295,6 +312,14 @@ const TextareaHighlight: FC = () => {
 		handleTextChange(watchedText)
 	}, [toggleBionicReading, handleTextChange, watchedText])
 
+	const handleSubmit = form.handleSubmit(({text}) => {
+		saveCurrentText(text)
+		setIsCooldown(true)
+		setTimeout(() => {
+			setIsCooldown(false)
+		}, cooldownPeriod)
+	})
+
 	useEffect(() => {
 		handleTextChange(watchedText)
 	}, [watchedText, handleTextChange])
@@ -302,10 +327,7 @@ const TextareaHighlight: FC = () => {
 	return (
 		<>
 			<Form {...form}>
-				<form
-					onSubmit={form.handleSubmit(({text}) => saveCurrentText(text))}
-					className='flex mx-auto gap-4 flex-wrap'
-				>
+				<form onSubmit={handleSubmit} className='flex mx-auto gap-4 flex-wrap'>
 					<div className='flex flex-col gap-4 max-w-[70ch]'>
 						<FormField
 							control={form.control}
@@ -343,10 +365,10 @@ const TextareaHighlight: FC = () => {
 						</Label>
 						<Button
 							type='submit'
-							disabled={!form.formState.isValid}
+							disabled={!form.formState.isValid || isCooldown}
 							className='mt-4'
 						>
-							Save Text
+							{isCooldown ? 'Loading...' : 'Save Text'}
 						</Button>
 						<ul className='mt-2'>
 							{savedItems.map(({text, date}) => (
