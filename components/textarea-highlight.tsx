@@ -14,6 +14,7 @@ import {
 	type SetStateAction
 } from 'react'
 import {useForm, useWatch} from 'react-hook-form'
+import {toast} from 'sonner'
 import {textVide} from 'text-vide'
 import {z} from 'zod'
 import {Button} from './ui/button'
@@ -242,6 +243,20 @@ const useSavedItems = (loadText: (text: string) => void) => {
 			const updatedItems = savedItems.filter(item => item.date !== date)
 			localStorage.setItem('savedItems', JSON.stringify(updatedItems))
 			setSavedItems(updatedItems)
+
+			toast(`${date} deleted`, {
+				action: {
+					label: 'Undo',
+					onClick: () => {
+						const restoredItem = savedItems.find(item => item.date === date)
+						if (restoredItem) {
+							const restoredItems = [...updatedItems, restoredItem]
+							localStorage.setItem('savedItems', JSON.stringify(restoredItems))
+							setSavedItems(restoredItems)
+						}
+					}
+				}
+			})
 		},
 		[savedItems]
 	)
